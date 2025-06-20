@@ -1,11 +1,6 @@
-### Installation
-To run Airflow, simply use the following instructions:
+# airflow-dags
+The repository contains the Airflow DAGs for secret scanning.
 
-First, make sure you have Docker installed on your machine.
-Second, change path to dags in docker-compose.yaml
-Last, run the following commands:
+To run the DAGs, you need to have Airflow installed and configured (by following the [installation guide](https://github.com/HSE-CW-Secret-Scanner/airflow-deployment)).
 
-```bash
-docker build -t airflow .
-docker compose up
-```
+The DAGs are defined in the `dags` directory.

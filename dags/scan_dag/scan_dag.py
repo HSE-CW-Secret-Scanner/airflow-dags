@@ -16,8 +16,8 @@ default_args = {
     'on_failure_callback': lambda context: print(f"Task failed: {context.get('task_instance').task_id}"),
 }
 
-with DAG(
-    'secret_scan',
+with (DAG(
+    'scan_dag',
     default_args=default_args,
     schedule_interval='@hourly',
     start_date=datetime(2025, 1, 1),
@@ -31,9 +31,9 @@ with DAG(
     3. LLM analysis for false positive reduction
     4. PostgreSQL storage of results
     """
-) as dag:
-    repo_url = Variable.get("SECRET_SCAN_REPO_URL")
-    base_report_path = Variable.get("SECRET_SCAN_REPORT_PATH")
+) as dag):
+    repo_url = Variable.get("SECRET_SCAN_REPO_URL", '')
+    base_report_path = Variable.get("SECRET_SCAN_REPORT_PATH", '')
 
     scan_task = scan_repo_with_noseyparker(repo_url, f"{base_report_path}.json")
 

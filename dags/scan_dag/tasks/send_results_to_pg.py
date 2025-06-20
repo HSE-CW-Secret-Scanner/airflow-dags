@@ -1,81 +1,79 @@
-import psycopg2
-from psycopg2 import sql
 from airflow.decorators import task
+from sqlalchemy.exc import SQLAlchemyError
 
+from config.data_sources.secrets_db import SecretDatabase
 
 @task
 def send_results_to_pg(flattened_data, db_config):
     """Upload flattened data to PostgreSQL"""
-    conn = None
+
+    db = None
     try:
-        # Connect to PostgreSQL
-        conn = psycopg2.connect(
-            host=db_config['host'],
-            port=db_config['port'],
-            dbname=db_config['database'],
-            user=db_config['user'],
-            password=db_config['password']
-        )
+        db = SecretDatabase()
+        db.connect()
+        table_names = ['repositories', 'secrets', 'secret_status_changes']
+        db.reflect_tables(table_names)
 
-        cur = conn.cursor()
+        Repository = db.get_table_class('repositories')
+        Secret = db.get_table_class('secrets')
+        SecretStatusChange = db.get_table_class('secret_status_changes')
 
-        # Prepare the SQL query
-        insert_query = sql.SQL("""
-            INSERT INTO secrets (
-                repository_id, detected_at, commit_hash, file_path, 
-                line, code_snippet, author, author_email, 
-                secret_hash, secret_type
-            ) VALUES (
-                (SELECT id FROM repositories WHERE name LIKE %s), 
-                %s, %s, %s, %s, %s, %s, %s, %s, %s
-            )
-            RETURNING id
-        """)
+        session = db.Session()
+        count = 0
 
-        # For each finding, first ensure repository exists, then insert secret
         for finding in flattened_data:
-            # Extract repo name from path (simplified example)
             repo_name = finding['repo_path'].split('/')[-1] if finding['repo_path'] else 'unknown'
 
-            # Insert or get repository
-            cur.execute("""
-                INSERT INTO repositories (name, last_updated, last_scanned)
-                VALUES (%s, %s, %s)
-                ON CONFLICT (name) DO UPDATE SET last_scanned = EXCLUDED.last_scanned
-                RETURNING id
-            """, (repo_name, finding['detected_at'], finding['detected_at']))
+            # Upsert repository
+            repo = session.query(Repository).filter_by(name=repo_name).first()
+            if repo:
+                repo.last_scanned = finding['detected_at']  # Update scan time
+            else:
+                repo = Repository(
+                    name=repo_name,
+                    last_updated=finding['detected_at'],
+                    last_scanned=finding['detected_at']
+                )
+                session.add(repo)
 
-            repo_id = cur.fetchone()[0]
+            session.flush()  # Get repo ID
 
-            # Insert secret
-            cur.execute(insert_query, (
-                f'%{repo_name}%',  # For the LIKE clause
-                finding['detected_at'],
-                finding['commit_hash'],
-                finding['file_path'],
-                finding['line'],
-                finding['snippet'],
-                finding['author'],
-                finding['author_email'],
-                finding['secret'],  # Using finding_id as secret_hash
-                finding['rule_name']  # Using rule_name as secret_type
-            ))
+            # Create secret record
+            secret = Secret(
+                repository_id=repo.id,
+                detected_at=finding['detected_at'],
+                commit_hash=finding['commit_hash'],
+                file_path=finding['file_path'],
+                line=finding['line'],
+                code_snippet=finding['snippet'],
+                author=finding['author'],
+                author_email=finding['author_email'],
+                secret_hash=finding['secret'],
+                secret_type=finding['rule_name']
+            )
+            session.add(secret)
+            session.flush()  # Get secret ID
 
-            secret_id = cur.fetchone()[0]
+            # Create status record
+            status = SecretStatusChange(
+                secret_id=secret.id,
+                status='detected',
+                marked_at=finding['detected_at']
+            )
+            session.add(status)
+            count += 1
 
-            # Optionally add status change
-            cur.execute("""
-                INSERT INTO secret_status_changes (secret_id, status, marked_at)
-                VALUES (%s, 'detected', %s)
-            """, (secret_id, finding['detected_at']))
+        session.commit()
+        print(f"Successfully inserted {count} findings")
 
-        conn.commit()
-        print(f"Successfully inserted {len(flattened_data)} findings")
-
-    except Exception as e:
+    except SQLAlchemyError as e:
         print(f"Database error: {e}")
-        if conn:
-            conn.rollback()
+        if 'session' in locals():
+            session.rollback()
+    except Exception as e:
+        print(f"Unexpected error: {e}")
     finally:
-        if conn:
-            conn.close()
+        if 'session' in locals():
+            session.close()
+        if db:
+            db.close()

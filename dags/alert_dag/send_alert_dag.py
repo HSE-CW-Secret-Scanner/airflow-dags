@@ -31,7 +31,7 @@ with DAG(
         execution_delta=timedelta(minutes=1),  # Allow short delay
         mode='reschedule',
         timeout=3600,  # 1 hour timeout
-        poke_interval=300,  # Check every 5 minutes
+        poke_interval=3,  # Check every 5 minutes
     )
 
     get_data_task = get_data()

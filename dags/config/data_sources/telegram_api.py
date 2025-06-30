@@ -2,7 +2,7 @@ import os
 import requests
 import telegramify_markdown
 
-from config.logger import logger
+from config.logger.logger import logger
 
 
 class Telegram:
@@ -18,9 +18,9 @@ class Telegram:
         """
         Initializes the Telegram client
         """
-        self.url = os.environ['TG_URL']
-        self.chat_id = os.environ['TG_CHAT_ID']
-        self.thread_id = os.environ['TG_THREAD_ID']
+        self.url = os.environ.get('TG_URL')
+        self.chat_id = os.environ.get('TG_CHAT_ID')
+        self.thread_id = os.environ.get('TG_THREAD_ID')
 
     def send_msg(self, message: str) -> dict:
         """
@@ -38,6 +38,8 @@ class Telegram:
             'text': telegramify_markdown.markdownify(str(message)),
             'parse_mode': 'MarkdownV2'
         }
+        print(data)
+        print(f'{self.url}/sendMessage')
         response = requests.post(url=f'{self.url}/sendMessage', json=data)
         if response.status_code != 200:
             logger.error(f'Bad response from Telegram: {response.text}')

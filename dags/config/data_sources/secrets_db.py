@@ -4,18 +4,19 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.ext.automap import automap_base
 
-from config.logger import logger
+from config.logger.logger import logger
+
 
 class SecretDatabase:
     def __init__(self):
         """
         Initializes the class with connection parameters.
         """
-        host = os.environ['PG_HOST']
-        port = os.environ['PG_PORT']
-        db_name = os.environ['PG_DB']
-        user = os.environ['PG_USER']
-        password = os.environ['PG_PASSWORD']
+        host = os.environ.get('PG_HOST')
+        port = os.environ.get('PG_PORT')
+        db_name = os.environ.get('PG_DB')
+        user = os.environ.get('PG_USER')
+        password = os.environ.get('PG_PASSWORD')
         self.connection_string = f"postgresql://{user}:{password}@{host}:{port}/{db_name}"
         self.engine = create_engine(self.connection_string)
         self.metadata = MetaData()

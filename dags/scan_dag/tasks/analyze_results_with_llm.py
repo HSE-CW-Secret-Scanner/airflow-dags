@@ -4,12 +4,12 @@ from airflow.decorators import task
 from scan_dag.utils.llm_prompt import generate_llm_prompt
 
 @task
-def analyze_results_with_llm(report: str):
-    model = "llama3.1"
+def analyze_results_with_llm(report):
+    model = "gemma3"
     prompt = generate_llm_prompt(report)
 
     response = requests.post(
-        "http://localhost:11434/api/generate",
+        "http://ollama:11434/api/generate",
         json={
             "model": model,
             "prompt": prompt,

@@ -7,6 +7,9 @@ from config.data_sources.secrets_db import SecretDatabase
 
 
 @task
+def get_data():
+    return [generate_security_report(), generate_alert_message()]
+
 def generate_security_report():
     """Generate security report message with total secrets and false-positives"""
     dpc = SecretDatabase()
@@ -52,7 +55,7 @@ False-positives: {fp_num}"""
 
 def generate_alert_message(hours=24):
     """Generate alert message with new secrets count and affected repositories"""
-    dpc = DPC()
+    dpc = SecretDatabase()
     try:
         dpc.connect()
         table_names = ['secrets', 'repositories']

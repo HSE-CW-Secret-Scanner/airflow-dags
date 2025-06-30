@@ -4,7 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from config.data_sources.secrets_db import SecretDatabase
 
 @task
-def send_results_to_pg(flattened_data, db_config):
+def send_results_to_pg(flattened_data):
     """Upload flattened data to PostgreSQL"""
 
     db = None

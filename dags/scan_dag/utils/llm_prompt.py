@@ -73,6 +73,6 @@ def generate_llm_prompt(input_data):
 4. Rule mismatch (e.g., "Keyword" rule detecting 32-char hex)
 
 **Process this JSON**:
-""" + input_data
+""" + str(input_data[0])
 
     return prompt
